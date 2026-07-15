@@ -1511,6 +1511,11 @@
   color: #fff;
 }
 
+.filter-tab:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
 .host-list-actions {
   display: flex;
   align-items: center;

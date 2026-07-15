@@ -163,6 +163,17 @@
   text-decoration: underline;
 }
 
+.auth-error {
+  width: 100%;
+  background: rgba(255, 47, 158, 0.1);
+  border: 1px solid rgba(255, 47, 158, 0.35);
+  border-radius: 10px;
+  padding: 11px 14px;
+  color: #ff6fbb;
+  font-size: 14px;
+  margin: -6px 0 20px;
+}
+
 .auth-button {
   width: 100%;
   background: #7c1fd8;
@@ -182,6 +193,11 @@
 
 .auth-button:active {
   background: #5f17a6;
+}
+
+.auth-button:disabled {
+  background: #4a3560;
+  cursor: not-allowed;
 }
 
 .auth-footer-text {

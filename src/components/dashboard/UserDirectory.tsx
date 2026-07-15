@@ -1,49 +1,60 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Search, Coins } from 'lucide-react';
-
-interface UserRow {
-  name: string;
-  org: string;
-  type: string;
-  contact: string;
-  coins: number;
-  totalTime: string;
-  online: boolean;
-  reports: number;
-  isHighSpender: boolean;
-  isNew: boolean;
-}
-
-const USERS: UserRow[] = [
-  { name: 'Arun', org: 'Zezting', type: 'CA', contact: '+91 98765 ****', coins: 3200, totalTime: '36 hr 25 min', online: true, reports: 3, isHighSpender: false, isNew: false },
-  { name: 'Isha', org: 'Zezting', type: 'CA', contact: '+91 91234 ****', coins: 6100, totalTime: '42 hr 10 min', online: true, reports: 0, isHighSpender: true, isNew: true },
-  { name: 'Noah', org: 'InnoTech', type: 'CA', contact: '+1 234 890 ****', coins: 5200, totalTime: '50 hr 15 min', online: false, reports: 1, isHighSpender: true, isNew: false },
-  { name: 'Liam', org: 'DevSolutions', type: 'UK', contact: '+44 123 456 ****', coins: 2800, totalTime: '15 hr 45 min', online: true, reports: 2, isHighSpender: false, isNew: true },
-  { name: 'Maya', org: 'TechWave', type: 'US', contact: '+1 234 567 ****', coins: 4500, totalTime: '28 hr 10 min', online: false, reports: 5, isHighSpender: false, isNew: false },
-  { name: 'Ava', org: 'WebMasters', type: 'NZ', contact: '+64 123 456 ****', coins: 3900, totalTime: '32 hr 5 min', online: true, reports: 3, isHighSpender: false, isNew: false },
-  { name: 'Sofia', org: 'CodeCrafters', type: 'AU', contact: '+61 987 654 ****', coins: 3600, totalTime: '40 hr 20 min', online: true, reports: 4, isHighSpender: false, isNew: false },
-];
+import { fetchUsersOverview, type UserDirectoryEntry } from '../../api/users';
+import { ApiError } from '../../lib/apiClient';
 
 type FilterTab = 'All' | 'Active' | 'High Spender' | 'New User' | 'Reported';
 
 const TABS: FilterTab[] = ['All', 'Active', 'High Spender', 'New User', 'Reported'];
 
+const UNSUPPORTED_TABS: FilterTab[] = ['High Spender', 'New User'];
+
+function formatStatus(status: UserDirectoryEntry['status']) {
+  return status.charAt(0) + status.slice(1).toLowerCase();
+}
+
 export default function UserDirectory() {
   const [tab, setTab] = useState<FilterTab>('All');
   const [query, setQuery] = useState('');
+  const [users, setUsers] = useState<UserDirectoryEntry[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    setLoading(true);
+    setError(null);
+
+    fetchUsersOverview()
+      .then((overview) => {
+        if (!cancelled) setUsers(overview.directory.data);
+      })
+      .catch((err: unknown) => {
+        if (cancelled) return;
+        setError(err instanceof ApiError ? err.message : 'Failed to load users.');
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const filtered = useMemo(() => {
-    return USERS.filter((u) => {
+    return users.filter((u) => {
       const matchesTab =
         tab === 'All' ||
-        (tab === 'Active' && u.online) ||
-        (tab === 'High Spender' && u.isHighSpender) ||
-        (tab === 'New User' && u.isNew) ||
-        (tab === 'Reported' && u.reports > 0);
-      const matchesQuery = u.name.toLowerCase().includes(query.trim().toLowerCase());
+        (tab === 'Active' && u.onlineStatus === 'ONLINE') ||
+        (tab === 'Reported' && u.reportsCount > 0);
+      const matchesQuery =
+        u.name.toLowerCase().includes(query.trim().toLowerCase()) ||
+        (u.username ?? '').toLowerCase().includes(query.trim().toLowerCase());
       return matchesTab && matchesQuery;
     });
-  }, [tab, query]);
+  }, [tab, query, users]);
 
   return (
     <div className="panel">
@@ -66,6 +77,8 @@ export default function UserDirectory() {
               key={t}
               type="button"
               className={`filter-tab${tab === t ? ' active' : ''}`}
+              disabled={UNSUPPORTED_TABS.includes(t)}
+              title={UNSUPPORTED_TABS.includes(t) ? 'Coming soon' : undefined}
               onClick={() => setTab(t)}
             >
               {t}
@@ -89,45 +102,51 @@ export default function UserDirectory() {
             <span>Action</span>
           </div>
 
-          {filtered.map((user) => (
-            <div className="user-table-row" key={user.name}>
-              <span className="host-table-name-cell">
-                <span className="user-avatar" />
-                <span className="top-host-info">
-                  <span className="user-name">{user.name}</span>
-                  <span className="host-sub">
-                    {user.org} · {user.type}
+          {loading && <div className="host-table-empty">Loading users…</div>}
+
+          {!loading && error && <div className="host-table-empty">{error}</div>}
+
+          {!loading &&
+            !error &&
+            filtered.map((user) => (
+              <div className="user-table-row" key={user.userId}>
+                <span className="host-table-name-cell">
+                  <span className="user-avatar" />
+                  <span className="top-host-info">
+                    <span className="user-name">{user.name}</span>
+                    <span className="host-sub">{user.username ? `@${user.username}` : formatStatus(user.status)}</span>
                   </span>
                 </span>
-              </span>
 
-              <span className="cell-muted">{user.contact}</span>
+                <span className="cell-muted">{user.contact}</span>
 
-              <span className="user-coins">
-                <Coins size={14} />
-                {user.coins.toLocaleString('en-IN')}
-              </span>
-
-              <span className="cell-muted">{user.totalTime}</span>
-
-              <span>
-                <span className={`status-pill${user.online ? ' online' : ''}`}>
-                  <span className="status-dot" />
-                  {user.online ? 'Online' : 'Offline'}
+                <span className="user-coins">
+                  <Coins size={14} />
+                  {user.coins.toLocaleString('en-IN')}
                 </span>
-              </span>
 
-              <span>{user.reports} Report</span>
+                <span className="cell-muted">{user.totalTimeLabel}</span>
 
-              <span>
-                <button type="button" className="btn-outline-muted small">
-                  Remove
-                </button>
-              </span>
-            </div>
-          ))}
+                <span>
+                  <span className={`status-pill${user.onlineStatus === 'ONLINE' ? ' online' : ''}`}>
+                    <span className="status-dot" />
+                    {user.onlineStatus === 'ONLINE' ? 'Online' : 'Offline'}
+                  </span>
+                </span>
 
-          {filtered.length === 0 && <div className="host-table-empty">No users match your filters.</div>}
+                <span>{user.reportsCount} Report</span>
+
+                <span>
+                  <button type="button" className="btn-outline-muted small" disabled={!user.action.canRemove}>
+                    Remove
+                  </button>
+                </span>
+              </div>
+            ))}
+
+          {!loading && !error && filtered.length === 0 && (
+            <div className="host-table-empty">No users match your filters.</div>
+          )}
         </div>
       </div>
     </div>

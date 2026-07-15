@@ -2,16 +2,30 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import AuthLayout from '../components/AuthLayout';
 import PasswordField from '../components/PasswordField';
+import { loginAdmin } from '../api/auth';
+import { ApiError, setAuthTokens } from '../lib/apiClient';
 
 export default function Login() {
   const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [remember, setRemember] = useState(false);
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    navigate('/dashboard');
+    setError('');
+    setLoading(true);
+    try {
+      const { accessToken, refreshToken } = await loginAdmin(email, password);
+      setAuthTokens(accessToken, refreshToken);
+      navigate('/dashboard');
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Unable to sign in. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -33,6 +47,12 @@ export default function Login() {
 
         <PasswordField label="Password" value={password} onChange={setPassword} />
 
+        {error && (
+          <p className="auth-error" role="alert">
+            {error}
+          </p>
+        )}
+
         <div className="auth-row">
           <label className="auth-remember">
             <input
@@ -48,8 +68,8 @@ export default function Login() {
           </Link>
         </div>
 
-        <button type="submit" className="auth-button">
-          Login
+        <button type="submit" className="auth-button" disabled={loading}>
+          {loading ? 'Signing in…' : 'Login'}
         </button>
       </form>
     </AuthLayout>

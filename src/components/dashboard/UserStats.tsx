@@ -1,33 +1,95 @@
-interface UserStat {
-  label: string;
-  value: string;
-  kind: 'delta' | 'warning';
-  text: string;
+import { useEffect, useState } from 'react';
+import { fetchUsersCards, type UsersCards } from '../../api/users';
+import { ApiError } from '../../lib/apiClient';
+
+function formatCurrency(value: number, currency: string) {
+  const symbol = currency === 'INR' ? '₹' : `${currency} `;
+  return `${symbol}${value.toLocaleString('en-IN')}`;
 }
 
-const STATS: UserStat[] = [
-  { label: 'Total Users', value: '18,342', kind: 'delta', text: '22%' },
-  { label: 'Online Now', value: '2,841', kind: 'delta', text: '18%' },
-  { label: 'Avg Spend / User', value: '₹348', kind: 'delta', text: '22%' },
-  { label: 'Never Called (Risk)', value: '34%', kind: 'warning', text: 'cost-to-first-call' },
-];
-
 export default function UserStats() {
+  const [cards, setCards] = useState<UsersCards | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    setLoading(true);
+    setError(null);
+
+    fetchUsersCards()
+      .then((data) => {
+        if (!cancelled) setCards(data);
+      })
+      .catch((err: unknown) => {
+        if (cancelled) return;
+        setError(err instanceof ApiError ? err.message : 'Failed to load stats.');
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  if (loading || error || !cards) {
+    return (
+      <div className="stat-grid">
+        <div className="stat-card">
+          <span className="stat-card-label">User Stats</span>
+          <span className="stat-card-value">{error ?? 'Loading…'}</span>
+        </div>
+      </div>
+    );
+  }
+
+  const stats = [
+    {
+      label: 'Total Users',
+      value: cards.totalUsers.value.toLocaleString('en-IN'),
+      trend: cards.totalUsers.trend,
+      text: `${Math.abs(cards.totalUsers.changePercent)}%`,
+    },
+    {
+      label: 'Online Now',
+      value: cards.onlineNow.value.toLocaleString('en-IN'),
+      trend: cards.onlineNow.trend,
+      text: `${Math.abs(cards.onlineNow.changePercent)}%`,
+    },
+    {
+      label: 'Avg Spend / User',
+      value: formatCurrency(cards.avgSpendPerUser.value, cards.avgSpendPerUser.currency),
+      trend: cards.avgSpendPerUser.trend,
+      text: `${Math.abs(cards.avgSpendPerUser.changePercent)}%`,
+    },
+  ] as const;
+
   return (
     <div className="stat-grid">
-      {STATS.map((stat) => (
+      {stats.map((stat) => (
         <div className="stat-card" key={stat.label}>
           <span className="stat-card-label">{stat.label}</span>
           <span className="stat-card-value">{stat.value}</span>
-          {stat.kind === 'delta' && (
+          {stat.trend !== 'NEUTRAL' && (
             <span className="stat-card-delta">
-              <span className="tri">▲</span>
+              <span className="tri">{stat.trend === 'UP' ? '▲' : '▼'}</span>
               {stat.text}
             </span>
           )}
-          {stat.kind === 'warning' && <span className="stat-card-warning">{stat.text}</span>}
         </div>
       ))}
+
+      <div className="stat-card">
+        <span className="stat-card-label">Never Called (Risk)</span>
+        <span className="stat-card-value">
+          {cards.neverCalledRisk.value}
+          {cards.neverCalledRisk.unit === 'PERCENT' ? '%' : ''}
+        </span>
+        <span className="stat-card-warning">{cards.neverCalledRisk.riskLabel}</span>
+      </div>
     </div>
   );
 }
