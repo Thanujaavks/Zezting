@@ -8,18 +8,8 @@ import Heatmap from '../components/dashboard/Heatmap';
 import GrowthSignals from '../components/dashboard/GrowthSignals';
 import { fetchDashboardCards } from '../api/dashboard';
 import { ApiError } from '../lib/apiClient';
-
-function formatCurrency(value: number, currency: string) {
-  const symbol = currency === 'INR' ? '₹' : `${currency} `;
-  return `${symbol}${value.toLocaleString('en-IN')}`;
-}
-
-function trendDelta(metric: { changePercent: number; trend: 'UP' | 'DOWN' | 'NEUTRAL' }): Partial<StatCard> {
-  if (metric.trend === 'NEUTRAL') {
-    return { note: 'No change vs yesterday', noteTone: 'muted' };
-  }
-  return { delta: `${Math.abs(metric.changePercent)}% vs yesterday` };
-}
+import { trendDelta } from '../lib/trend';
+import { formatCurrency } from '../lib/format';
 
 export default function DashboardHome() {
   const [stats, setStats] = useState<StatCard[] | null>(null);

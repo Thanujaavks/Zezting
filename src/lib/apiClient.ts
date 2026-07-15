@@ -79,3 +79,25 @@ export async function apiPost<T>(path: string, payload?: unknown): Promise<T> {
 
   return body.data;
 }
+
+export async function apiPatch<T>(path: string, payload?: unknown): Promise<T> {
+  const token = localStorage.getItem(TOKEN_STORAGE_KEY);
+
+  const res = await fetch(`${API_BASE_URL}${path}`, {
+    method: 'PATCH',
+    headers: {
+      accept: '*/*',
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify(payload ?? {}),
+  });
+
+  const body = (await res.json()) as ApiEnvelope<T>;
+
+  if (!res.ok || !body.success) {
+    throw new ApiError(body.message || 'Request failed', res.status, body.error?.code);
+  }
+
+  return body.data;
+}

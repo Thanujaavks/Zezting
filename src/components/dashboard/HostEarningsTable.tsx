@@ -55,7 +55,7 @@ export default function HostEarningsTable() {
   return (
     <div className="panel">
       <div className="panel-head">
-        <span className="panel-title">Top Host Today</span>
+        <span className="panel-title">Payout Requests</span>
         <div className="host-search">
           <Search size={15} />
           <input

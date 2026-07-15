@@ -1,30 +1,26 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Search, SlidersHorizontal, Gem } from 'lucide-react';
-
-interface Host {
-  name: string;
-  age: number;
-  type: 'Zezting' | 'CA';
-  tier: string;
-  performance: number;
-  availHours: number;
-  availPercent: number;
-  earned: number;
-  online: boolean;
-  gradient: string;
-}
-
-const HOSTS: Host[] = [
-  { name: 'Priya Sharma', age: 34, type: 'CA', tier: 'Diamond', performance: 84, availHours: 88.2, availPercent: 4, earned: 28400, online: true, gradient: 'linear-gradient(135deg, #a970ff, #ff2f9e)' },
-  { name: 'Ananya Verma', age: 29, type: 'Zezting', tier: 'Diamond', performance: 79, availHours: 76.4, availPercent: 6, earned: 25150, online: true, gradient: 'linear-gradient(135deg, #0d9e6e, #1fbf94)' },
-  { name: 'Kavya Reddy', age: 31, type: 'CA', tier: 'Platinum', performance: 76, availHours: 64.8, availPercent: 8, earned: 23980, online: false, gradient: 'linear-gradient(135deg, #ff8a3d, #ff2f9e)' },
-  { name: 'Meera Nair', age: 27, type: 'Zezting', tier: 'Diamond', performance: 71, availHours: 58.1, availPercent: 5, earned: 21760, online: true, gradient: 'linear-gradient(135deg, #4f7bff, #a970ff)' },
-  { name: 'Sneha Iyer', age: 33, type: 'CA', tier: 'Gold', performance: 68, availHours: 50.4, availPercent: 9, earned: 19420, online: false, gradient: 'linear-gradient(135deg, #ff5f6d, #a970ff)' },
-  { name: 'Divya Menon', age: 26, type: 'Zezting', tier: 'Platinum', performance: 65, availHours: 45.7, availPercent: 7, earned: 17980, online: true, gradient: 'linear-gradient(135deg, #22c1c3, #a970ff)' },
-  { name: 'Riya Kapoor', age: 30, type: 'CA', tier: 'Gold', performance: 61, availHours: 39.2, availPercent: 10, earned: 15630, online: true, gradient: 'linear-gradient(135deg, #ff2f9e, #7c1fd8)' },
-];
+import { fetchHostList, type HostListItem, type HostType } from '../../api/hostManagement';
+import { ApiError } from '../../lib/apiClient';
+import { formatCurrency } from '../../lib/format';
 
 type FilterTab = 'All' | 'Zezting' | 'CA';
+
+const TAB_TO_TYPE: Record<FilterTab, HostType> = {
+  All: 'ALL',
+  Zezting: 'ZEZTING',
+  CA: 'CA',
+};
+
+const GRADIENTS = [
+  'linear-gradient(135deg, #a970ff, #ff2f9e)',
+  'linear-gradient(135deg, #0d9e6e, #1fbf94)',
+  'linear-gradient(135deg, #ff8a3d, #ff2f9e)',
+  'linear-gradient(135deg, #4f7bff, #a970ff)',
+  'linear-gradient(135deg, #ff5f6d, #a970ff)',
+  'linear-gradient(135deg, #22c1c3, #a970ff)',
+  'linear-gradient(135deg, #ff2f9e, #7c1fd8)',
+];
 
 function initials(name: string) {
   return name
@@ -33,17 +29,61 @@ function initials(name: string) {
     .join('');
 }
 
+function typeLabel(hostType: HostListItem['hostType']): 'Zezting' | 'CA' {
+  return hostType === 'CA' ? 'CA' : 'Zezting';
+}
+
+const LIMIT = 20;
+
 export default function HostList() {
   const [tab, setTab] = useState<FilterTab>('All');
   const [query, setQuery] = useState('');
+  const [debouncedQuery, setDebouncedQuery] = useState('');
+  const [page, setPage] = useState(1);
 
-  const filtered = useMemo(() => {
-    return HOSTS.filter((h) => {
-      const matchesTab = tab === 'All' || h.type === tab;
-      const matchesQuery = h.name.toLowerCase().includes(query.trim().toLowerCase());
-      return matchesTab && matchesQuery;
-    });
-  }, [tab, query]);
+  const [hosts, setHosts] = useState<HostListItem[] | null>(null);
+  const [totalPages, setTotalPages] = useState(1);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedQuery(query.trim()), 400);
+    return () => clearTimeout(timer);
+  }, [query]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [tab, debouncedQuery]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    setLoading(true);
+    setError(null);
+
+    fetchHostList({
+      page,
+      limit: LIMIT,
+      type: TAB_TO_TYPE[tab],
+      search: debouncedQuery || undefined,
+    })
+      .then((res) => {
+        if (cancelled) return;
+        setHosts(res.data);
+        setTotalPages(Math.max(1, res.pagination.totalPages));
+      })
+      .catch((err: unknown) => {
+        if (cancelled) return;
+        setError(err instanceof ApiError ? err.message : 'Failed to load hosts.');
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [tab, debouncedQuery, page]);
 
   return (
     <div className="panel">
@@ -91,51 +131,86 @@ export default function HostList() {
             <span>Action</span>
           </div>
 
-          {filtered.map((host) => (
-            <div className="host-table-row" key={host.name}>
-              <span className="host-table-name-cell">
-                <span className="host-avatar host-avatar-sm" style={{ background: host.gradient }}>
-                  {initials(host.name)}
-                </span>
-                <span className="top-host-info">
-                  <span className="host-link">{host.name}</span>
-                  <span className="host-sub">
-                    Age {host.age} · {host.type}
+          {loading || error || !hosts ? (
+            <div className="host-table-empty">{error ?? 'Loading…'}</div>
+          ) : hosts.length === 0 ? (
+            <div className="host-table-empty">No hosts match your filters.</div>
+          ) : (
+            hosts.map((host, index) => (
+              <div className="host-table-row" key={host.hostId}>
+                <span className="host-table-name-cell">
+                  <span
+                    className="host-avatar host-avatar-sm"
+                    style={
+                      host.profileImage
+                        ? { backgroundImage: `url(${host.profileImage})`, backgroundSize: 'cover', backgroundPosition: 'center' }
+                        : { background: GRADIENTS[index % GRADIENTS.length] }
+                    }
+                  >
+                    {!host.profileImage && initials(host.name)}
+                  </span>
+                  <span className="top-host-info">
+                    <span className="host-link">{host.name}</span>
+                    <span className="host-sub">
+                      {host.age != null ? `Age ${host.age}` : 'Age —'} · {typeLabel(host.hostType)}
+                    </span>
                   </span>
                 </span>
-              </span>
 
-              <span>
-                <span className="tier-badge">
-                  <Gem size={11} />
-                  {host.tier}
+                <span>
+                  <span className="tier-badge">
+                    <Gem size={11} />
+                    {host.tier ?? 'Unranked'}
+                  </span>
                 </span>
-              </span>
 
-              <span className="cell-teal">{host.performance}%</span>
-              <span className="cell-muted">
-                {host.availHours}h/d · {host.availPercent}%
-              </span>
-              <span className="cell-teal">₹{host.earned.toLocaleString('en-IN')}</span>
-
-              <span>
-                <span className={`status-pill${host.online ? ' online' : ''}`}>
-                  <span className="status-dot" />
-                  {host.online ? 'Online' : 'Offline'}
+                <span className="cell-teal">{host.performancePercent}%</span>
+                <span className="cell-muted">
+                  {host.availability.hours}h/d · {host.availability.percentage}%
                 </span>
-              </span>
+                <span className="cell-teal">{formatCurrency(host.estimatedMonthAmount, host.currency)}</span>
 
-              <span>
-                <button type="button" className="btn-outline-muted small">
-                  View
-                </button>
-              </span>
-            </div>
-          ))}
+                <span>
+                  <span className={`status-pill${host.onlineStatus !== 'OFFLINE' ? ' online' : ''}`}>
+                    <span className="status-dot" />
+                    {host.onlineStatus !== 'OFFLINE' ? 'Online' : 'Offline'}
+                  </span>
+                </span>
 
-          {filtered.length === 0 && <div className="host-table-empty">No hosts match your filters.</div>}
+                <span>
+                  <button type="button" className="btn-outline-muted small">
+                    View
+                  </button>
+                </span>
+              </div>
+            ))
+          )}
         </div>
       </div>
+
+      {!loading && !error && hosts && hosts.length > 0 && (
+        <div className="host-list-pagination">
+          <span>
+            Page {page} of {totalPages}
+          </span>
+          <button
+            type="button"
+            className="btn-outline-muted small"
+            disabled={page <= 1}
+            onClick={() => setPage((p) => Math.max(1, p - 1))}
+          >
+            Prev
+          </button>
+          <button
+            type="button"
+            className="btn-outline-muted small"
+            disabled={page >= totalPages}
+            onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+          >
+            Next
+          </button>
+        </div>
+      )}
     </div>
   );
 }

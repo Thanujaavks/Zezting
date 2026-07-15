@@ -907,6 +907,15 @@
 
 /* Hourly activity bar chart */
 
+.hourly-bars-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 240px;
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
 .hourly-bars {
   display: flex;
   align-items: flex-end;
@@ -1657,6 +1666,16 @@
   text-align: center;
   color: var(--text-muted);
   font-size: 13.5px;
+}
+
+.host-list-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 14px;
+  font-size: 12.5px;
+  color: var(--text-muted);
 }
 
 /* Host earnings */

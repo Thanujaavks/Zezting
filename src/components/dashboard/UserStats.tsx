@@ -1,11 +1,7 @@
 import { useEffect, useState } from 'react';
 import { fetchUsersCards, type UsersCards } from '../../api/users';
 import { ApiError } from '../../lib/apiClient';
-
-function formatCurrency(value: number, currency: string) {
-  const symbol = currency === 'INR' ? '₹' : `${currency} `;
-  return `${symbol}${value.toLocaleString('en-IN')}`;
-}
+import { formatCurrency } from '../../lib/format';
 
 export default function UserStats() {
   const [cards, setCards] = useState<UsersCards | null>(null);

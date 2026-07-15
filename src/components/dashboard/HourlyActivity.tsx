@@ -1,50 +1,84 @@
-interface HourBar {
-  label: string;
-  value: number;
-  peak?: boolean;
+import { useEffect, useState } from 'react';
+import { fetchHourlyActivity, type HourlyActivityBucket } from '../../api/appAnalytics';
+import { ApiError } from '../../lib/apiClient';
+
+function todayDate(): string {
+  const now = new Date();
+  const y = now.getFullYear();
+  const m = String(now.getMonth() + 1).padStart(2, '0');
+  const d = String(now.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
 }
 
-const BARS: HourBar[] = [
-  { label: '12 AM', value: 92, peak: true },
-  { label: '3 AM', value: 74 },
-  { label: '6 AM', value: 58 },
-  { label: '9 AM', value: 34 },
-  { label: '12 PM', value: 26 },
-  { label: '2 PM', value: 16 },
-  { label: '4 PM', value: 42 },
-  { label: '6 PM', value: 68 },
-  { label: '8 PM', value: 78 },
-  { label: '11 PM', value: 96, peak: true },
-];
-
 export default function HourlyActivity() {
+  const [buckets, setBuckets] = useState<HourlyActivityBucket[] | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    setLoading(true);
+    setError(null);
+
+    fetchHourlyActivity(todayDate())
+      .then((data) => {
+        if (cancelled) return;
+        setBuckets(data);
+      })
+      .catch((err: unknown) => {
+        if (cancelled) return;
+        setError(err instanceof ApiError ? err.message : 'Failed to load hourly activity.');
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const maxScore = buckets ? Math.max(1, ...buckets.map((b) => b.activityScore)) : 1;
+  const peakScore = buckets ? Math.max(...buckets.map((b) => b.activityScore)) : 0;
+
   return (
     <div className="panel">
       <div className="panel-head">
         <span className="panel-title">Hourly Activity — Today</span>
       </div>
 
-      <div className="hourly-bars">
-        {BARS.map((bar) => (
-          <div className="hourly-bar-col" key={bar.label}>
-            <div
-              className="hourly-bar"
-              style={{
-                height: `${bar.value}%`,
-                background: bar.peak ? 'var(--chart-pink)' : 'var(--chart-purple)',
-              }}
-              title={`${bar.label}: ${bar.value * 21} calls`}
-            />
+      {loading || error || !buckets ? (
+        <div className="hourly-bars-empty">{error ?? 'Loading…'}</div>
+      ) : (
+        <>
+          <div className="hourly-bars">
+            {buckets.map((bucket) => {
+              const height = bucket.activityScore > 0 ? (bucket.activityScore / maxScore) * 100 : 2;
+              const peak = bucket.activityScore === peakScore && peakScore > 0;
+              return (
+                <div className="hourly-bar-col" key={bucket.hour}>
+                  <div
+                    className="hourly-bar"
+                    style={{
+                      height: `${height}%`,
+                      background: peak ? 'var(--chart-pink)' : 'var(--chart-purple)',
+                    }}
+                    title={`${bucket.label}: ${bucket.activeUsers} active users, ${bucket.calls} calls`}
+                  />
+                </div>
+              );
+            })}
           </div>
-        ))}
-      </div>
-      <div className="hourly-labels">
-        {BARS.map((bar) => (
-          <span className="hourly-label-col" key={bar.label}>
-            {bar.label}
-          </span>
-        ))}
-      </div>
+          <div className="hourly-labels">
+            {buckets.map((bucket) => (
+              <span className="hourly-label-col" key={bucket.hour}>
+                {bucket.label}
+              </span>
+            ))}
+          </div>
+        </>
+      )}
     </div>
   );
 }
