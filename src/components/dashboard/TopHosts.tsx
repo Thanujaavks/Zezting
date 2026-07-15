@@ -1,40 +1,13 @@
-interface Host {
-  name: string;
-  sparks: number;
-  repeat: number;
-  revenue: number;
-  gradient: string;
-}
+import { useEffect, useState } from 'react';
+import { fetchDashboardTopHosts } from '../../api/dashboard';
+import type { TopHost } from '../../api/topHosts';
+import { ApiError } from '../../lib/apiClient';
 
-const HOSTS: Host[] = [
-  {
-    name: 'Priya Sharma',
-    sparks: 4120,
-    repeat: 84,
-    revenue: 28400,
-    gradient: 'linear-gradient(135deg, #a970ff, #ff2f9e)',
-  },
-  {
-    name: 'Ananya Verma',
-    sparks: 3860,
-    repeat: 79,
-    revenue: 25150,
-    gradient: 'linear-gradient(135deg, #0d9e6e, #1fbf94)',
-  },
-  {
-    name: 'Kavya Reddy',
-    sparks: 3540,
-    repeat: 76,
-    revenue: 23980,
-    gradient: 'linear-gradient(135deg, #ff8a3d, #ff2f9e)',
-  },
-  {
-    name: 'Meera Nair',
-    sparks: 3210,
-    repeat: 71,
-    revenue: 21760,
-    gradient: 'linear-gradient(135deg, #4f7bff, #a970ff)',
-  },
+const GRADIENTS = [
+  'linear-gradient(135deg, #a970ff, #ff2f9e)',
+  'linear-gradient(135deg, #0d9e6e, #1fbf94)',
+  'linear-gradient(135deg, #ff8a3d, #ff2f9e)',
+  'linear-gradient(135deg, #4f7bff, #a970ff)',
 ];
 
 function initials(name: string) {
@@ -45,6 +18,33 @@ function initials(name: string) {
 }
 
 export default function TopHosts() {
+  const [hosts, setHosts] = useState<TopHost[] | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    setLoading(true);
+    setError(null);
+
+    fetchDashboardTopHosts(4)
+      .then((data) => {
+        if (!cancelled) setHosts(data);
+      })
+      .catch((err: unknown) => {
+        if (cancelled) return;
+        setError(err instanceof ApiError ? err.message : 'Failed to load top hosts.');
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   return (
     <div className="panel">
       <div className="panel-head">
@@ -53,22 +53,29 @@ export default function TopHosts() {
           View all
         </button>
       </div>
-      <div className="host-list">
-        {HOSTS.map((host) => (
-          <div className="host-row" key={host.name}>
-            <span className="host-avatar" style={{ background: host.gradient }}>
-              {initials(host.name)}
-            </span>
-            <span className="host-info">
-              <span className="host-name">{host.name}</span>
-              <span className="host-sub">
-                {host.sparks.toLocaleString('en-IN')} sparks · {host.repeat}% repeat
+
+      {loading || error || !hosts ? (
+        <div className="hourly-bars-empty">{error ?? 'Loading…'}</div>
+      ) : hosts.length === 0 ? (
+        <div className="hourly-bars-empty">No host activity yet.</div>
+      ) : (
+        <div className="host-list">
+          {hosts.map((host, index) => (
+            <div className="host-row" key={host.name}>
+              <span className="host-avatar" style={{ background: GRADIENTS[index % GRADIENTS.length] }}>
+                {initials(host.name)}
               </span>
-            </span>
-            <span className="host-amount">₹{host.revenue.toLocaleString('en-IN')}</span>
-          </div>
-        ))}
-      </div>
+              <span className="host-info">
+                <span className="host-name">{host.name}</span>
+                <span className="host-sub">
+                  {(host.sparks ?? 0).toLocaleString('en-IN')} sparks · {host.repeatPercent ?? 0}% repeat
+                </span>
+              </span>
+              <span className="host-amount">₹{(host.earnings ?? 0).toLocaleString('en-IN')}</span>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

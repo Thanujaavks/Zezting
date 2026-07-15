@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Calendar, ChevronLeft, ChevronRight, Plus } from 'lucide-react';
+import AddExpenseServiceModal from './AddExpenseServiceModal';
 
 interface ExpenseRow {
   id: number;
@@ -30,6 +31,7 @@ export default function ExpenseTable() {
   const [rows, setRows] = useState(EXPENSES);
   const [monthIndex, setMonthIndex] = useState(2); // March
   const [year, setYear] = useState(2026);
+  const [showAddService, setShowAddService] = useState(false);
 
   const shiftMonth = (delta: number) => {
     const next = monthIndex + delta;
@@ -69,12 +71,14 @@ export default function ExpenseTable() {
             </button>
           </div>
 
-          <button type="button" className="btn-add-service">
+          <button type="button" className="btn-add-service" onClick={() => setShowAddService(true)}>
             <Plus size={15} />
             Add Service
           </button>
         </div>
       </div>
+
+      {showAddService && <AddExpenseServiceModal onClose={() => setShowAddService(false)} />}
 
       <div className="host-table-scroll">
         <div className="expense-table">

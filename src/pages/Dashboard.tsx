@@ -1,76 +1,41 @@
 import { useState } from 'react';
+import { Routes, Route, useLocation } from 'react-router-dom';
 import Sidebar from '../components/dashboard/Sidebar';
 import Topbar from '../components/dashboard/Topbar';
 import ComingSoon from '../components/dashboard/ComingSoon';
-import DashboardHome from './DashboardHome';
-import AppAnalytics from './AppAnalytics';
-import Revenue from './Revenue';
-import HostManagement from './HostManagement';
-import HostEarnings from './HostEarnings';
-import HostVerification from './HostVerification';
-import UserManagement from './UserManagement';
-import CallMonitor from './CallMonitor';
-import ReportsSafety from './ReportsSafety';
-import ManageApp from './ManageApp';
-import AdminManagement from './AdminManagement';
-import PlatformExpense from './PlatformExpense';
-import Settings from './Settings';
+import { NAV_ITEMS, PAGE_TITLES } from '../components/dashboard/navConfig';
 import '../styles/dashboard.css';
 
-function renderPage(activeNav: string) {
-  switch (activeNav) {
-    case 'Dashboard':
-      return <DashboardHome />;
-    case 'App Analytics':
-      return <AppAnalytics />;
-    case 'Revenue':
-      return <Revenue />;
-    case 'Host Management':
-      return <HostManagement />;
-    case 'Host Earnings':
-      return <HostEarnings />;
-    case 'Verification':
-      return <HostVerification />;
-    case 'Users':
-      return <UserManagement />;
-    case 'Call Monitor':
-      return <CallMonitor />;
-    case 'Reports & Safety':
-      return <ReportsSafety />;
-    case 'Manage App':
-      return <ManageApp />;
-    case 'Admin Management':
-      return <AdminManagement />;
-    case 'Platform Expense':
-      return <PlatformExpense />;
-    case 'Settings':
-      return <Settings />;
-    default:
-      return <ComingSoon section={activeNav} />;
-  }
+function useActiveLabel() {
+  const location = useLocation();
+  const activePath = location.pathname.replace(/^\/dashboard\/?/, '');
+  const match = NAV_ITEMS.find((item) => item.path === activePath);
+  return match?.label ?? activePath;
 }
 
-const PAGE_TITLES: Record<string, string> = {
-  'Manage App': 'Manage application',
-};
-
 export default function Dashboard() {
-  const [activeNav, setActiveNav] = useState('Dashboard');
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const activeLabel = useActiveLabel();
 
   return (
     <div className="dash-shell">
-      <Sidebar
-        active={activeNav}
-        onSelect={setActiveNav}
-        open={sidebarOpen}
-        onClose={() => setSidebarOpen(false)}
-      />
+      <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
       <div className="dash-main">
-        <Topbar title={PAGE_TITLES[activeNav] ?? activeNav} onMenuClick={() => setSidebarOpen(true)} />
+        <Topbar title={PAGE_TITLES[activeLabel] ?? activeLabel} onMenuClick={() => setSidebarOpen(true)} />
 
-        <div className="dash-content">{renderPage(activeNav)}</div>
+        <div className="dash-content">
+          <Routes>
+            {NAV_ITEMS.map((item) =>
+              item.path === '' ? (
+                <Route key={item.label} index element={<item.element />} />
+              ) : (
+                <Route key={item.label} path={item.path} element={<item.element />} />
+              )
+            )}
+            <Route path="*" element={<ComingSoon section={activeLabel} />} />
+          </Routes>
+        </div>
       </div>
     </div>
   );

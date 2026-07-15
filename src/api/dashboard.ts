@@ -1,4 +1,7 @@
 import { apiGet } from '../lib/apiClient';
+import type { TopHost } from './topHosts';
+
+export type { TopHost } from './topHosts';
 
 interface TrendMetric {
   value: number;
@@ -53,4 +56,31 @@ export interface PeakEngagementHour {
 
 export function fetchPeakEngagementHours(params?: { date?: string; limit?: number }): Promise<PeakEngagementHour[]> {
   return apiGet<PeakEngagementHour[]>('/api/admin/dashboard/peak-engagement-hours', params);
+}
+
+export interface DashboardAlerts {
+  openReportsOver6Hours: number;
+  pendingHostVerifications: number;
+  payoutHolds: number;
+}
+
+export function fetchDashboardAlerts(): Promise<DashboardAlerts> {
+  return apiGet<DashboardAlerts>('/api/admin/dashboard/alerts');
+}
+
+export function fetchDashboardTopHosts(limit = 5): Promise<TopHost[]> {
+  return apiGet<TopHost[]>('/api/admin/dashboard/top-hosts', { limit });
+}
+
+export interface PlatformRate {
+  _id: string;
+  coins: number;
+  price: number;
+  currency: string;
+  isActive: boolean;
+  sortOrder: number;
+}
+
+export function fetchPlatformRates(): Promise<PlatformRate[]> {
+  return apiGet<PlatformRate[]>('/api/admin/platform-rates');
 }

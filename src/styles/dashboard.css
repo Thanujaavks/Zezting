@@ -99,6 +99,7 @@
   border: 1px solid transparent;
   background: transparent;
   color: var(--text-secondary);
+  text-decoration: none;
   font-size: 14.5px;
   font-weight: 500;
   text-align: left;
@@ -3673,5 +3674,221 @@
 
   .adm-panel {
     padding: 20px 16px 22px;
+  }
+}
+
+/* Add Expense Service modal */
+
+.exp-modal {
+  max-width: 960px;
+}
+
+.exp-close-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  margin-top: 2px;
+  margin-left: auto;
+  flex-shrink: 0;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.exp-close-btn:hover {
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--text-primary);
+}
+
+.exp-panel {
+  margin-bottom: 18px;
+  gap: 16px;
+}
+
+.exp-panel-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--text-primary);
+  font-family: "Clash Display-Medium", sans-serif;
+}
+
+.exp-panel-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: rgba(124, 31, 216, 0.18);
+  color: var(--accent-purple-light);
+  flex-shrink: 0;
+}
+
+.exp-required {
+  color: var(--status-critical);
+  margin-left: 3px;
+}
+
+.exp-tooltip-icon {
+  color: var(--text-muted);
+  margin-left: 6px;
+  vertical-align: -1px;
+}
+
+.exp-helper-text {
+  font-size: 11.5px;
+  color: var(--text-muted);
+  margin-top: -2px;
+}
+
+.exp-config-row {
+  display: grid;
+  gap: 18px;
+  align-items: start;
+}
+
+.exp-config-row-3 {
+  grid-template-columns: 1.5fr 1fr 1fr;
+}
+
+.exp-config-row-2 {
+  grid-template-columns: 1fr 1fr;
+}
+
+.exp-toggle-group {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.exp-toggle-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  flex: 1;
+  min-width: 150px;
+  padding: 11px 16px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.02);
+  color: var(--text-secondary);
+  font-size: 12.5px;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease, color 0.15s ease;
+}
+
+.exp-toggle-btn.selected {
+  border-color: var(--accent-purple-light);
+  background: rgba(124, 31, 216, 0.12);
+  color: var(--text-primary);
+}
+
+.exp-toggle-btn.selected svg {
+  color: var(--accent-purple-light);
+}
+
+.exp-radio-dot {
+  position: relative;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 1.5px solid var(--text-muted);
+  flex-shrink: 0;
+}
+
+.exp-toggle-btn.selected .exp-radio-dot {
+  border-color: var(--accent-purple-light);
+}
+
+.exp-toggle-btn.selected .exp-radio-dot::after {
+  content: "";
+  position: absolute;
+  inset: 2.5px;
+  border-radius: 50%;
+  background: var(--accent-purple-light);
+}
+
+.exp-select-wrap {
+  position: relative;
+}
+
+.exp-select {
+  appearance: none;
+  -webkit-appearance: none;
+  padding-right: 20px;
+  cursor: pointer;
+}
+
+.exp-select-chevron {
+  position: absolute;
+  right: 14px;
+  color: var(--text-muted);
+  pointer-events: none;
+}
+
+.exp-currency-icon {
+  font-size: 14px;
+  line-height: 1;
+}
+
+.exp-bottom-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18px;
+  margin-bottom: 22px;
+}
+
+.exp-bottom-grid .exp-panel {
+  margin-bottom: 0;
+}
+
+.exp-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+.exp-create-btn {
+  padding: 11px 26px;
+  font-size: 13px;
+}
+
+@media (max-width: 1024px) {
+  .exp-config-row-3 {
+    grid-template-columns: 1fr;
+  }
+
+  .exp-bottom-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .exp-config-row-2 {
+    grid-template-columns: 1fr;
+  }
+
+  .exp-toggle-btn {
+    min-width: 0;
+  }
+
+  .exp-footer {
+    justify-content: stretch;
+  }
+
+  .exp-footer button {
+    flex: 1;
   }
 }
