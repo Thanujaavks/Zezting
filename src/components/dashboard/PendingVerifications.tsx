@@ -1,39 +1,40 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ChevronRight, ArrowLeftRight } from 'lucide-react';
-
-interface VerificationCard {
-  name: string;
-  gender: string;
-  age: number;
-  city: string;
-  eligible: 'CA' | 'Zezting';
-  daysAgo: number;
-}
-
-const CARDS: VerificationCard[] = [
-  { name: 'StarVoice_482', gender: 'Female', age: 34, city: 'Kochi', eligible: 'CA', daysAgo: 1 },
-  { name: 'MelodyQueen_119', gender: 'Female', age: 27, city: 'Mumbai', eligible: 'Zezting', daysAgo: 3 },
-  { name: 'SilkVoice_207', gender: 'Female', age: 31, city: 'Delhi', eligible: 'CA', daysAgo: 2 },
-  { name: 'DreamyTone_356', gender: 'Female', age: 24, city: 'Bengaluru', eligible: 'CA', daysAgo: 5 },
-  { name: 'VelvetVoice_089', gender: 'Female', age: 29, city: 'Chennai', eligible: 'Zezting', daysAgo: 4 },
-  { name: 'CharmSpeak_275', gender: 'Female', age: 38, city: 'Pune', eligible: 'CA', daysAgo: 1 },
-  { name: 'MysticVoice_412', gender: 'Female', age: 26, city: 'Hyderabad', eligible: 'CA', daysAgo: 6 },
-  { name: 'GoldenTone_138', gender: 'Female', age: 33, city: 'Jaipur', eligible: 'Zezting', daysAgo: 2 },
-  { name: 'SereneVoice_294', gender: 'Female', age: 30, city: 'Lucknow', eligible: 'CA', daysAgo: 7 },
-  { name: 'RadiantVoice_167', gender: 'Female', age: 25, city: 'Ahmedabad', eligible: 'CA', daysAgo: 3 },
-  { name: 'EchoQueen_053', gender: 'Female', age: 36, city: 'Kolkata', eligible: 'Zezting', daysAgo: 8 },
-  { name: 'LunaVoice_321', gender: 'Female', age: 28, city: 'Indore', eligible: 'CA', daysAgo: 1 },
-];
+import { fetchPendingHostVerifications, type PendingHostVerification } from '../../api/hostVerification';
+import { ApiError } from '../../lib/apiClient';
 
 type SortOrder = 'old' | 'new';
 
+const SORT_PARAM: Record<SortOrder, 'OLD' | 'NEW'> = { old: 'OLD', new: 'NEW' };
+
 export default function PendingVerifications() {
   const [sort, setSort] = useState<SortOrder>('new');
+  const [cards, setCards] = useState<PendingHostVerification[] | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const sorted = useMemo(() => {
-    const copy = [...CARDS];
-    copy.sort((a, b) => (sort === 'new' ? a.daysAgo - b.daysAgo : b.daysAgo - a.daysAgo));
-    return copy;
+  useEffect(() => {
+    let cancelled = false;
+
+    setLoading(true);
+    setError(null);
+
+    fetchPendingHostVerifications({ page: 1, limit: 12, sort: SORT_PARAM[sort] })
+      .then((res) => {
+        if (cancelled) return;
+        setCards(res.data);
+      })
+      .catch((err: unknown) => {
+        if (cancelled) return;
+        setError(err instanceof ApiError ? err.message : 'Failed to load pending verifications.');
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
   }, [sort]);
 
   return (
@@ -59,23 +60,32 @@ export default function PendingVerifications() {
         </div>
       </div>
 
-      <div className="verification-grid">
-        {sorted.map((card) => (
-          <button type="button" className="verification-card" key={card.name}>
-            <span className="verification-card-head">
-              <span className="verification-card-name">{card.name}</span>
-              <ChevronRight size={16} />
-            </span>
-            <span className="verification-card-sub">
-              {card.gender} <span className="dot-sep">•</span> {card.age} <span className="dot-sep">•</span> {card.city}
-            </span>
-            <span className="verification-badges">
-              <span className="badge-pending">Pending Approval</span>
-              <span className="badge-eligible">{card.eligible} Eligible</span>
-            </span>
-          </button>
-        ))}
-      </div>
+      {loading || !cards ? (
+        <div className="hourly-bars-empty">{error ?? 'Loading…'}</div>
+      ) : cards.length === 0 ? (
+        <div className="hourly-bars-empty">No pending verifications.</div>
+      ) : (
+        <>
+          {error && <span className="stat-note critical">{error}</span>}
+          <div className="verification-grid">
+            {cards.map((card) => (
+              <button type="button" className="verification-card" key={card.verificationId}>
+                <span className="verification-card-head">
+                  <span className="verification-card-name">{card.name}</span>
+                  <ChevronRight size={16} />
+                </span>
+                <span className="verification-card-sub">
+                  {card.gender} <span className="dot-sep">•</span> {card.age} <span className="dot-sep">•</span> {card.city}
+                </span>
+                <span className="verification-badges">
+                  <span className="badge-pending">Pending Approval</span>
+                  <span className="badge-eligible">{card.isCaEligible ? 'CA' : 'Zezting'} Eligible</span>
+                </span>
+              </button>
+            ))}
+          </div>
+        </>
+      )}
     </div>
   );
 }
